@@ -347,9 +347,22 @@ function rotate(shape) {
 //  board[y][x] = currentPiece.color 로 설정하세요.
 // ============================================================
 function placePiece() {
-  // TODO: 여기에 구현하세요
+  // shape 배열을 순회하며 값이 1인 칸을 board에 색상으로 고정
+  for (let row = 0; row < currentPiece.shape.length; row++) {
+    for (let col = 0; col < currentPiece.shape[row].length; col++) {
+      if (!currentPiece.shape[row][col]) continue; // 빈 칸은 건너뜀
 
+      const boardX = currentPiece.x + col; // 보드 X 좌표
+      const boardY = currentPiece.y + row; // 보드 Y 좌표
+
+      // 보드 범위 안일 때만 색상 고정 (음수 Y 방어)
+      if (boardY >= 0) {
+        board[boardY][boardX] = currentPiece.color;
+      }
+    }
+  }
 }
+
 
 // ============================================================
 //  TODO 6: clearLines()
@@ -371,9 +384,37 @@ function placePiece() {
 //    dropInterval = Math.max(100, 1000 - (level - 1) * 100);
 // ============================================================
 function clearLines() {
-  // TODO: 여기에 구현하세요
+  // 점수 테이블: 동시에 제거한 줄 수에 따른 기본 점수
+  const points = [0, 100, 300, 500, 800];
 
+  let count = 0; // 이번에 제거된 줄 수
+
+  // 아래 행부터 위로 검사 (splice 후 인덱스 밀림 방지)
+  for (let r = ROWS - 1; r >= 0; r--) {
+    // 해당 행의 모든 칸이 null이 아니면 → 가득 찬 행
+    const isFull = board[r].every(cell => cell !== null);
+
+    if (isFull) {
+      board.splice(r, 1);                       // 가득 찬 행 제거
+      board.unshift(new Array(COLS).fill(null)); // 맨 위에 빈 행 추가
+      r++; // 행을 제거했으므로 같은 인덱스를 다시 검사
+      count++;
+    }
+  }
+
+  if (count > 0) {
+    // 점수 누적 (동시 제거 보너스 반영)
+    score       += points[count] * level;
+
+    // 총 제거 줄 수 및 레벨 갱신
+    linesCleared += count;
+    level         = Math.floor(linesCleared / 10) + 1;
+
+    // 레벨이 오를수록 하강 속도 증가 (최소 100ms)
+    dropInterval  = Math.max(100, 1000 - (level - 1) * 100);
+  }
 }
+
 
 // ============================================================
 //  TODO 7: draw()
