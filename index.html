@@ -216,7 +216,7 @@ function drawBlock(x, y, color) {
 
 // ============================================================
 //  TODO 1: initBoard()
-//  ─────────────────────────────────────────────────────────
+// 보드를 ROWS × COLS 크기의 2D 배열로 초기화 (모든 칸 = null) ─────────────────────────────────────────────────────────
 //  보드를 초기화합니다.
 //  board 변수를 ROWS × COLS 크기의 2D 배열로 만들고,
 //  모든 칸을 null 로 채워주세요.
@@ -228,13 +228,18 @@ function drawBlock(x, y, color) {
 //    }
 // ============================================================
 function initBoard() {
-  // TODO: 여기에 구현하세요
-
+  board = []; // 기존 보드 초기화
+  for (let r = 0; r < ROWS; r++) {
+    // null이 COLS개인 배열을 한 행으로 추가
+    board.push(new Array(COLS).fill(null));
+  }
 }
-
 // ============================================================
 //  TODO 2: createPiece()
-//  ─────────────────────────────────────────────────────────
+//  PIECE_TYPES 중 랜덤으로 1개 선택 → currentPiece 할당
+//  x: 보드 중앙, y: 0 (최상단)
+//============================================================
+// ─────────────────────────────────────────────────────────
 //  새 블록을 생성해서 currentPiece에 할당합니다.
 //  PIECE_TYPES 중 랜덤으로 하나를 선택하고,
 //  x 는 보드 중앙, y 는 0 으로 설정하세요.
@@ -247,13 +252,24 @@ function initBoard() {
 //    중앙 x = Math.floor((COLS - shape[0].length) / 2)
 // ============================================================
 function createPiece() {
-  // TODO: 여기에 구현하세요
+  // 랜덤 블록 종류 선택 (예: 'I', 'T', 'O' 등)
+  const type  = PIECE_TYPES[Math.floor(Math.random() * PIECE_TYPES.length)];
+  const shape = SHAPES[type];
 
+  currentPiece = {
+    shape,
+    color: COLORS[type],
+    x: Math.floor((COLS - shape[0].length) / 2), // 보드 가로 중앙
+    y: 0,                                          // 최상단에서 시작
+  };
 }
 
 // ============================================================
 //  TODO 3: isCollision(piece, dx, dy)
-//  ─────────────────────────────────────────────────────────
+//  piece를 (dx, dy)만큼 이동했을 때 충돌 여부 반환
+//  ① 왼쪽·오른쪽 벽  ② 바닥  ③ 기존 고정 블록
+// ============================================================
+// ─────────────────────────────────────────────────────────
 //  piece 를 (dx, dy) 만큼 이동했을 때 충돌이 발생하면 true,
 //  아니면 false 를 반환합니다.
 //
@@ -267,13 +283,33 @@ function createPiece() {
 //    값이 1인 칸의 실제 보드 좌표 = (piece.x + col + dx, piece.y + row + dy)
 // ============================================================
 function isCollision(piece, dx, dy) {
-  // TODO: 여기에 구현하세요
+  for (let row = 0; row < piece.shape.length; row++) {
+    for (let col = 0; col < piece.shape[row].length; col++) {
+      // 블록이 존재하는 칸만 검사
+      if (!piece.shape[row][col]) continue;
 
+      const nextX = piece.x + col + dx; // 이동 후 보드 X 좌표
+      const nextY = piece.y + row + dy; // 이동 후 보드 Y 좌표
+
+      // ① 왼쪽·오른쪽 벽 충돌
+      if (nextX < 0 || nextX >= COLS) return true;
+
+      // ② 바닥 충돌
+      if (nextY >= ROWS) return true;
+
+      // ③ 이미 고정된 블록과 충돌 (위쪽은 board가 없을 수 있으므로 nextY >= 0 체크)
+      if (nextY >= 0 && board[nextY][nextX] !== null) return true;
+    }
+  }
+  return false; // 충돌 없음
 }
-
 // ============================================================
 //  TODO 4: rotate(shape)
-//  ─────────────────────────────────────────────────────────
+//  2D 배열을 90도 시계 방향으로 회전한 새 배열 반환
+//  원리: 전치(transpose) 후 각 행을 좌우 반전(reverse)
+//  예) [[0,1,0],[1,1,1]] → [[1,0],[1,1],[1,0]]
+// ============================================================
+// ─────────────────────────────────────────────────────────
 //  2D 배열 shape 을 90도 시계 방향으로 회전한 새 배열을 반환합니다.
 //
 //  원리:
@@ -289,10 +325,20 @@ function isCollision(piece, dx, dy) {
 //    결과 배열 크기는 cols × rows (가로·세로 뒤바뀜)
 // ============================================================
 function rotate(shape) {
-  // TODO: 여기에 구현하세요
+  const rows = shape.length;
+  const cols = shape[0].length;
 
+  // 결과 배열 크기: cols(행) × rows(열) — 가로·세로 뒤바뀜
+  const rotated = Array.from({ length: cols }, () => new Array(rows).fill(0));
+
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      // 시계 방향 90도: [c][rows - 1 - r] = 원래 [r][c]
+      rotated[c][rows - 1 - r] = shape[r][c];
+    }
+  }
+  return rotated;
 }
-
 // ============================================================
 //  TODO 5: placePiece()
 //  ─────────────────────────────────────────────────────────
@@ -362,16 +408,30 @@ function draw() {
     ctx.stroke();
   }
 
-  // TODO ②: board 고정 블록 그리기
-  //   for (let r = 0; r < ROWS; r++) {
-  //     for (let c = 0; c < COLS; c++) {
-  //       if (board[r][c]) drawBlock(c, r, board[r][c]);
-  //     }
-  //   }
+// ② board 고정 블록 그리기 — null이 아닌 칸만 색상으로 채움
+  for (let r = 0; r < ROWS; r++) {
+    for (let c = 0; c < COLS; c++) {
+      if (board[r][c]) {
+        drawBlock(c, r, board[r][c]); // 열(c)=x, 행(r)=y
+      }
+    }
+  }
 
-  // TODO ③: currentPiece 그리기
-  //   currentPiece.shape 의 값이 1인 칸을
-  //   drawBlock(currentPiece.x + col, currentPiece.y + row, currentPiece.color) 로 그리기
+  // ③ currentPiece 현재 낙하 블록 그리기
+  if (currentPiece) {
+    for (let row = 0; row < currentPiece.shape.length; row++) {
+      for (let col = 0; col < currentPiece.shape[row].length; col++) {
+        // shape 값이 1인 칸만 그리기
+        if (currentPiece.shape[row][col]) {
+          drawBlock(
+            currentPiece.x + col, // 보드 X = 블록 기준 X + 열 오프셋
+            currentPiece.y + row, // 보드 Y = 블록 기준 Y + 행 오프셋
+            currentPiece.color
+          );
+        }
+      }
+    }
+  }
 }
 
 // ============================================================
@@ -392,24 +452,53 @@ document.addEventListener('keydown', (e) => {
 
   switch (e.key) {
     case 'ArrowLeft':
-      // TODO: 왼쪽 이동
+      // 왼쪽 충돌 없을 때만 이동
+      if (!isCollision(currentPiece, -1, 0)) {
+        currentPiece.x -= 1;
+      }
       break;
 
     case 'ArrowRight':
-      // TODO: 오른쪽 이동
+      // 오른쪽 충돌 없을 때만 이동
+      if (!isCollision(currentPiece, 1, 0)) {
+        currentPiece.x += 1;
+      }
       break;
 
     case 'ArrowDown':
-      // TODO: 빠른 하강
+      if (!isCollision(currentPiece, 0, 1)) {
+        // 아래 공간 있으면 한 칸 하강
+        currentPiece.y += 1;
+      } else {
+        // 아래가 막혔으면 즉시 고정 → 줄 제거 → 새 블록 생성
+        placePiece();
+        clearLines();
+        updateUI();         // 점수·레벨 UI 반영
+        createPiece();
+        // 새 블록이 생성되자마자 충돌 = 게임 오버
+        if (isCollision(currentPiece, 0, 0)) {
+          gameOver = true;
+          showGameOver();
+        }
+      }
       break;
 
     case 'ArrowUp':
-      // TODO: 블록 회전
+      const rotatedShape = rotate(currentPiece.shape); // 90도 시계 방향 회전
+      const prevShape    = currentPiece.shape;          // 취소용 백업
+
+      currentPiece.shape = rotatedShape; // 임시 적용
+      if (isCollision(currentPiece, 0, 0)) {
+        // 회전 후 충돌이면 원래 shape으로 복원
+        currentPiece.shape = prevShape;
+      }
+      // 충돌 없으면 rotatedShape 그대로 유지
       break;
   }
 
-  draw();  // 이동 후 바로 화면 갱신
+  draw(); // 키 입력 즉시 화면 갱신
 });
+
 
 // ============================================================
 //  TODO 9: gameLoop(timestamp)
@@ -431,13 +520,36 @@ document.addEventListener('keydown', (e) => {
 //    5. requestAnimationFrame(gameLoop)
 // ============================================================
 function gameLoop(timestamp) {
-  if (gameOver) return;
+  if (gameOver) return; // 게임 오버 시 루프 종료
 
-  // TODO: 여기에 구현하세요
+  const deltaTime = timestamp - lastTime; // 이전 프레임과의 경과 시간(ms)
 
-  draw();  // 일단 매 프레임 draw 는 실행되도록 유지
-  requestAnimationFrame(gameLoop);
+  // dropInterval마다 블록을 한 칸 자동 하강
+  if (deltaTime > dropInterval) {
+    if (!isCollision(currentPiece, 0, 1)) {
+      // 아래 공간 있으면 한 칸 내려감
+      currentPiece.y += 1;
+    } else {
+      // 바닥 또는 블록에 닿았으면 고정 처리
+      placePiece();
+      clearLines();
+      updateUI();       // 점수·레벨·라인 수 UI 갱신
+      createPiece();
+
+      // 새로 생성된 블록이 즉시 충돌 → 게임 오버
+      if (isCollision(currentPiece, 0, 0)) {
+        gameOver = true;
+        showGameOver(); // 오버레이 표시
+        return;         // 루프 즉시 중단
+      }
+    }
+    lastTime = timestamp; // 하강 처리 후 기준 시간 갱신
+  }
+
+  draw();                            // 매 프레임 화면 갱신
+  requestAnimationFrame(gameLoop);   // 다음 프레임 예약
 }
+
 
 // ============================================================
 //  ■ UI 업데이트 헬퍼 — 이미 완성되어 있습니다
